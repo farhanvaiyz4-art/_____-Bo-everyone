@@ -1,152 +1,96 @@
-const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
+const axios = require('axios');
+const yts = require("yt-search");
 
 const baseApiUrl = async () => {
-  const base = await axios.get(
-    `https://raw.githubusercontent.com/rummmmna21/rx-api/main/baseApiUrl.json?fbclid=IwY2xjawN1LPlleHRuA2FlbQIxMQABHrS3c9PLQEj8--h_gtg-Dn1chJA1PuOg39Bl3_7volMObgoBTusScj7atlSv_aem_Od2q66hLLFpjGWb1_EWUhw`
-  );
-  return base.data.api;
+    const base = await axios.get(
+        `https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json`
+    );
+    return base.data.api;
 };
+
+(async () => {
+    global.apis = {
+        diptoApi: await baseApiUrl()
+    };
+})();
+
+async function getStreamFromURL(url, pathName) {
+    try {
+        const response = await axios.get(url, {
+            responseType: "stream"
+        });
+        response.data.path = pathName;
+        return response.data;
+    } catch (err) {
+        throw err;
+    }
+}
+
+global.utils = {
+    ...global.utils,
+    getStreamFromURL: global.utils.getStreamFromURL || getStreamFromURL
+};
+
+function getVideoID(url) {
+    const checkurl = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
+    const match = url.match(checkurl);
+    return match ? match[1] : null;
+}
+
+const config = {
+    name: "video",
+    author: "Mesbah Saxx",
+    credits: "Mesbah Saxx",
+    version: "1.0.0",
+    role: 0,
+    hasPermssion: 0,
+    description: "",
+    usePrefix: true,
+    prfix: true,
+    category: "media",
+    commandCategory: "media",
+    cooldowns: 5,
+    countDown: 5,
+};
+
+async function onStart({ api, args, event }) {
+    try {
+        let videoID,w;
+        const url = args[0];
+
+        if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
+            videoID = getVideoID(url);
+            if (!videoID) {
+                await api.sendMessage("Invalid YouTube URL.", event.threadID, event.messageID);
+            }
+        } else {
+            const songName = args.join(' ');
+             w = await api.sendMessage(`Searching song "${songName}"... `, event.threadID);
+            const r = await yts(songName);
+            const videos = r.videos.slice(0, 50);
+
+            const videoData = videos[Math.floor(Math.random() * videos.length)];
+            videoID = videoData.videoId;
+        }
+
+        const { data: { title, quality, downloadLink } } = await axios.get(`${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp4`);
+
+        api.unsendMessage(w.messageID);
+        
+        const o = '.php';
+        const shortenedLink = (await axios.get(`https://tinyurl.com/api-create${o}?url=${encodeURIComponent(downloadLink)}`)).data;
+
+        await api.sendMessage({
+            body: `🔖 - 𝚃𝚒𝚝𝚕𝚎: ${title}\n✨ - 𝚀𝚞𝚊𝚕𝚒𝚝𝚢: ${quality}\n\n📥 - 𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍 𝙻𝚒𝚗𝚔: ${shortenedLink}`,
+            attachment: await global.utils.getStreamFromURL(downloadLink, title+'.mp4')
+        }, event.threadID, event.messageID);
+    } catch (e) {
+        api.sendMessage(e.message || "An error occurred.", event.threadID, event.messageID);
+    }
+}
 
 module.exports = {
-  config: {
-    name: "video",
-    version: "1.0.0",
-    author: "RX x MOHAMMAD AKASH",
-    role: 0,
-    category: "media",
-    shortDescription: "Download video from YouTube",
-    longDescription: "Search YouTube videos and download them in MP4 format.",
-    guide: "{pn} [video name | YouTube link]\n\nExample:\n{pn} despacito"
-  },
-
-  onStart: async function ({ api, event, args }) {
-    const checkurl = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
-    const input = args.join(" ");
-
-    if (!input)
-      return api.sendMessage("❌ Please provide a video name or YouTube link.", event.threadID, event.messageID);
-
-    const isYtLink = checkurl.test(input);
-    const tmpFolder = path.join(__dirname, "tmp");
-    if (!fs.existsSync(tmpFolder)) fs.mkdirSync(tmpFolder, { recursive: true });
-
-    // Direct YouTube link
-    if (isYtLink) {
-      const match = input.match(checkurl);
-      const videoID = match ? match[1] : null;
-
-      try {
-        const { data } = await axios.get(`${await baseApiUrl()}/ytDl3?link=${videoID}&format=mp4`);
-        const { title, downloadLink } = data;
-
-        const filePath = path.join(tmpFolder, `${Date.now()}_video.mp4`);
-        const res = await axios.get(downloadLink, { responseType: "arraybuffer" });
-        fs.writeFileSync(filePath, Buffer.from(res.data));
-
-        return api.sendMessage(
-          { body: `🎬 ${title}`, attachment: fs.createReadStream(filePath) },
-          event.threadID,
-          () => fs.unlinkSync(filePath),
-          event.messageID
-        );
-      } catch (err) {
-        console.error(err);
-        return api.sendMessage("❌ Failed to fetch video.", event.threadID, event.messageID);
-      }
-    }
-
-    // Keyword search
-    let keyWord = input.includes("?feature=share")
-      ? input.replace("?feature=share", "")
-      : input;
-    const maxResults = 6;
-
-    try {
-      const res = await axios.get(`${await baseApiUrl()}/ytFullSearch?songName=${encodeURIComponent(keyWord)}`);
-      const results = res.data.slice(0, maxResults);
-
-      if (!results.length)
-        return api.sendMessage(`⭕ No results found for: ${keyWord}`, event.threadID, event.messageID);
-
-      let msg = "🎥 Choose a video below (reply with number 1–6):\n\n";
-      const thumbs = [];
-
-      results.forEach((info, i) => {
-        msg += `${i + 1}. ${info.title}\n⏱️ ${info.time}\n📺 ${info.channel.name}\n\n`;
-        thumbs.push(loadStream(info.thumbnail));
-      });
-
-      const allThumbs = await Promise.all(thumbs);
-
-      return api.sendMessage(
-        {
-          body: msg + "🎬 Reply with the number to download the video.",
-          attachment: allThumbs
-        },
-        event.threadID,
-        (err, info) => {
-          global.GoatBot.onReply.set(info.messageID, {
-            commandName: "video",
-            author: event.senderID,
-            results,
-            messageID: info.messageID
-          });
-        },
-        event.messageID
-      );
-    } catch (err) {
-      console.error(err);
-      return api.sendMessage("❌ Error searching for videos.", event.threadID, event.messageID);
-    }
-  },
-
-  onReply: async function ({ api, event, Reply }) {
-    if (event.senderID !== Reply.author) return;
-    const { results, messageID } = Reply;
-    const choice = parseInt(event.body);
-
-    if (isNaN(choice) || choice < 1 || choice > results.length)
-      return api.sendMessage("❌ Please reply with a valid number.", event.threadID, event.messageID);
-
-    const selected = results[choice - 1];
-    const tmpFolder = path.join(__dirname, "tmp");
-    if (!fs.existsSync(tmpFolder)) fs.mkdirSync(tmpFolder, { recursive: true });
-
-    try {
-      // Unsend old message
-      api.unsendMessage(messageID);
-
-      const { data } = await axios.get(`${await baseApiUrl()}/ytDl3?link=${selected.id}&format=mp4`);
-      const { title, quality, downloadLink } = data;
-
-      const filePath = path.join(tmpFolder, `${Date.now()}_video.mp4`);
-      const res = await axios.get(downloadLink, { responseType: "arraybuffer" });
-      fs.writeFileSync(filePath, Buffer.from(res.data));
-
-      return api.sendMessage(
-        {
-          body: `🎬 Now Playing: ${title}\n📦 Quality: ${quality}`,
-          attachment: fs.createReadStream(filePath)
-        },
-        event.threadID,
-        () => fs.unlinkSync(filePath),
-        event.messageID
-      );
-    } catch (err) {
-      console.error(err);
-      return api.sendMessage("⭕ Error downloading video (may exceed 26MB).", event.threadID, event.messageID);
-    }
-  }
+    config,
+    onStart,
+    run: onStart
 };
-
-// Helper to stream thumbnails
-async function loadStream(url) {
-  try {
-    const res = await axios.get(url, { responseType: "stream" });
-    return res.data;
-  } catch {
-    return null;
-  }
-}
