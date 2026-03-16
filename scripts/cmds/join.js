@@ -1,113 +1,81 @@
 module.exports = {
   config: {
     name: "join",
-    aliases: ["boxlist", "allbox"],
-    version: "1.5.0",
-    author: "MOHAMMAD AKASH",
-    role: 2,
-    shortDescription: "Paginated active group list & add yourself",
-    category: "system",
-    countDown: 10
+    version: "1.1.0",
+    author: "Milon Pro",
+    countDown: 5,
+    role: 2, 
+    description: "Get all group list and join by serial number",
+    category: "System",
+    guide: {
+        en: "{pn}"
+    }
   },
 
+/* --- [ 🔐 FILE_CREATOR_INFORMATION ] ---
+ * 🤖 BOT NAME: MILON BOT
+ * 👤 OWNER: MILON HASAN
+ * 📍 LOCATION: NARAYANGANJ, BANGLADESH
+ * --------------------------------------- */
+
   onStart: async function ({ api, event }) {
-    const { threadID, messageID, senderID } = event;
-    const perPage = 10;
+    const { threadID, messageID } = event;
 
     try {
-      // সর্বোচ্চ 50 থ্রেড ফেচ করা
-      const allThreads = await api.getThreadList(50, null, ["INBOX"]);
+      // ১০টি থ্রেড লিস্ট নেওয়ার চেষ্টা
+      const allThreads = await api.getThreadList(20, null, ["INBOX"]) || [];
+      const groupList = allThreads.filter(t => t.isGroup && t.isSubscribed);
 
-      // শুধু ACTIVE গ্রুপ
-      const groups = allThreads.filter(t => t.isGroup && t.isSubscribed);
-      if (!groups.length) 
-        return api.sendMessage("⚠️ Bot is not currently in any group.", threadID, messageID);
+      if (!groupList || groupList.length === 0) {
+        return api.sendMessage("❌ মামা, বটের কাছে কোনো সচল গ্রুপের তথ্য পাওয়া যায়নি।", threadID, messageID);
+      }
 
-      const page = 1;
-      const start = (page - 1) * perPage;
-      const end = start + perPage;
-      const currentGroups = groups.slice(start, end);
-
-      let msg = `📦 | 𝙱𝙾𝚇 𝙻𝙸𝚂𝚃 (𝙿𝙰𝙶𝙴 ${page})\n\n`;
-      currentGroups.forEach((g, i) => {
-        msg += `${start + i + 1}. ${g.name || "Unnamed Group"}\n`;
-        msg += `🆔 ${g.threadID}\n\n`;
+      let msg = "📜 𝐆𝐫𝐨𝐮𝐩 𝐋𝐢𝐬𝐭 📜\n━━━━━━━━━━━━━━━━━\n";
+      groupList.forEach((group, index) => {
+        msg += `${index + 1}. ${group.name || "Unknown Group"}\n`;
       });
+      msg += "\n━━━━━━━━━━━━━━━━━\n👉 যে গ্রুপে জয়েন হতে চান, সেই সিরিয়াল নাম্বারটি লিখে রিপ্লাই দিন।";
 
-      msg += "↩️ Rᴇᴘʟʏ Wɪᴛʜ: ᴀᴅᴅ 1 | ᴀᴅᴅ 2 5\n➡️ Oʀ ᴘᴀɢᴇ 2 ... Tᴏ sᴇᴇ Mᴏʀᴇ Gʀᴏᴜᴘs";
-
-      api.sendMessage(msg.trim(), threadID, (err, info) => {
+      return api.sendMessage(msg, threadID, (err, info) => {
+        if (err) return console.log(err);
         global.GoatBot.onReply.set(info.messageID, {
           commandName: this.config.name,
-          author: senderID,
-          groups,
-          page,
-          perPage
+          messageID: info.messageID,
+          author: event.senderID,
+          groupList
         });
       }, messageID);
 
     } catch (e) {
-      console.error(e);
-      api.sendMessage("❌ Failed to fetch active group list.", threadID, messageID);
+      return api.sendMessage(`❌ এরর: গ্রুপের লিস্ট পাওয়া যাচ্ছে না। কিছুক্ষণ পর ট্রাই করো।`, threadID, messageID);
     }
   },
 
   onReply: async function ({ api, event, Reply }) {
-    if (event.senderID !== Reply.author) return;
+    const { threadID, messageID, body, senderID } = event;
+    const { author, groupList } = Reply;
 
-    const args = event.body.trim().toLowerCase().split(/\s+/);
-    const perPage = Reply.perPage || 10;
+    if (author !== senderID) return;
 
-    // PAGE কমান্ড
-    if (args[0] === "page") {
-      const pageNum = parseInt(args[1]);
-      if (isNaN(pageNum) || pageNum < 1) return api.sendMessage("❌ Invalid page number", event.threadID);
-
-      const start = (pageNum - 1) * perPage;
-      const end = start + perPage;
-      const currentGroups = Reply.groups.slice(start, end);
-
-      if (!currentGroups.length) return api.sendMessage("⚠️ No more groups", event.threadID);
-
-      let msg = `📦 | 𝙱𝙾𝚇 𝙻𝙸𝚂𝚃 (𝙿𝙰𝙶𝙴 ${pageNum})\n\n`;
-      currentGroups.forEach((g, i) => {
-        msg += `${start + i + 1}. ${g.name || "Unnamed Group"}\n`;
-        msg += `🆔 ${g.threadID}\n\n`;
-      });
-      msg += `↩️ Rᴇᴘʟʏ Wɪᴛʜ: Aᴅᴅ 1 | Aᴅᴅ 2 5\n➡️ Oʀ Pᴀɢᴇ ${pageNum + 1} ... to see more groups`;
-
-      api.sendMessage(msg.trim(), event.threadID, (err, info) => {
-        global.GoatBot.onReply.set(info.messageID, {
-          commandName: Reply.commandName,
-          author: Reply.author,
-          groups: Reply.groups,
-          page: pageNum,
-          perPage
-        });
-      });
-      return;
+    const index = parseInt(body) - 1;
+    if (isNaN(body) || index < 0 || !groupList[index]) {
+      return api.sendMessage("❌ মামা, ভুল সিরিয়াল নাম্বার দিয়েছেন। সঠিক নাম্বার লিখে রিপ্লাই দিন।", threadID, messageID);
     }
 
-    // ADD কমান্ড
-    if (args[0] === "add") {
-      const addUserToGroup = async (uid, tid, name) => {
-        try {
-          await api.addUserToGroup(uid, tid);
-          await api.sendMessage(`✅ Aᴅᴅᴇᴅ Yᴏᴜ Tᴏ: ${name}`, event.threadID);
-        } catch {
-          await api.sendMessage(`❌ Fᴀɪʟᴅ Tᴏ Aᴅᴅ Yᴏᴜ ᴛᴏ: ${name}`, event.threadID);
-        }
-      };
+    const targetGroup = groupList[index];
+    const targetThreadID = targetGroup.threadID;
 
-      for (let i = 1; i < args.length; i++) {
-        const index = parseInt(args[i]) - 1;
-        if (isNaN(index) || index < 0 || index >= Reply.groups.length) {
-          await api.sendMessage(`❌ Iɴᴠᴀʟɪᴅ Nᴜᴍʙᴇʀ: ${args[i]}`, event.threadID);
-          continue;
-        }
-        const g = Reply.groups[index];
-        await addUserToGroup(event.senderID, g.threadID, g.name || "Unnamed Group");
-      }
+    try {
+      await api.addUserToGroup(senderID, targetThreadID);
+      api.sendMessage(`✅ সাকসেস! আপনাকে "${targetGroup.name || "ঐ গ্রুপে"}" অ্যাড করা হয়েছে।`, threadID, messageID);
+      
+      // ওই গ্রুপেও একটা নোটিফিকেশন
+      api.sendMessage(`🔔 মিলন বস (Owner) এই গ্রুপে জয়েন করেছেন।`, targetThreadID);
+
+    } catch (err) {
+      api.sendMessage(`❌ মামা অ্যাড করা যাচ্ছে না। হয়তো আপনি অলরেডি গ্রুপে আছেন বা বট এডমিন না।\nGroup ID: ${targetThreadID}`, threadID, messageID);
     }
+
+    global.GoatBot.onReply.delete(Reply.messageID);
   }
 };
