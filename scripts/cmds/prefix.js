@@ -112,19 +112,19 @@ module.exports = {
 		const time = moment().tz("Asia/Dhaka").format("hh:mm A");
 		const date = moment().tz("Asia/Dhaka").format("DD MMM YYYY");
 
-		const owner = global.GoatBot.config.adminName || "𝐅𝐀𝐑𝐇𝐀𝐍";
+		const owner = global.GoatBot.config.adminName || "亗ARIFUL";
 
 		return message.reply({
 			body:
-`╭━━━〔《𓆩𝐏𝐑𝐄𝐅𝐈𝐗𓆪》〕━━━╮
-┃ 🏷️ 𓆩𝐆𝐑𝐎𝐔𝐏𓆪: 《𓆩${groupName}𓆪》
-┃ 🔰 𓆩𝐒𝐘𝐒𝐓𝐄𝐌𓆪: 《${systemPrefix}》
-┃ 💬 𓆩𝐆𝐑𝐎𝐔𝐏𓆪: 《${groupPrefix}》
-┃ ⏰ 𓆩𝐓𝐈𝐌𝐄𓆪: 《𓆩${time}𓆪》
-┃ 📅 𓆩𝐃𝐀𝐓𝐄𓆪:𓆩${date}𓆪
-┃ 👑 𓆩𝐎𝐖𝐍𝐄𝐑𓆪: 《𓆩${owner}𓆪》
-┃ ⚡ 𓆩𝐒𝐓𝐀𝐓𝐔𝐒𓆪: 《𓆩𝐎𝐍𝐋𝐈𝐍𝐄𓆪》
-╰━━━〔《𓆩𝐒𝐈𝐙𝐔𝐊𝐀𓆪》〕━━━╯`,
+`╭━━━〔 ᭡PREFIX 〕━━━╮
+┃ 🏷️ Group : ${groupName}
+┃ 🔰 System : 『 ${systemPrefix} 』
+┃ 💬 Group  : 『 ${groupPrefix} 』
+┃ ⏰ Time   : ${time}
+┃ 📅 Date   : ${date}
+┃ 👑 Owner  : ${owner}
+┃ ⚡ Status : ONLINE
+╰━━━〔  🎁☑️👀 〕━━━╯`,
 			attachment: await getStreamFromURL(gif)
 		});
 	}
