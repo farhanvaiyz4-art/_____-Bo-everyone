@@ -1,10 +1,12 @@
 const axios = require("axios");
 
 const mahmud = [
+        "Sizu",
+        "sizu",
         "baby",
         "bby",
-        "Baby",
-        "BABY",
+        "সিজু",
+        "bbu",
         "jan",
         "সিজুকা",
         "জান",
@@ -21,8 +23,8 @@ const baseApiUrl = async () => {
 
 module.exports = {
         config: {
-                name: "Sizu",
-                aliases: ["Bby", "Janu", "Jan", "JAN", "janu", "sizu", "SIZUKA"],
+                name: "hinata",
+                aliases: ["baby", "bby", "bbu", "jan", "janu", "sizu", "SIZUKA"],
                 version: "1.8",
                 author: "MahMUD",
                 countDown: 2,
