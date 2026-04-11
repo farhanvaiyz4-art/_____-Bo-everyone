@@ -8,7 +8,7 @@ module.exports = {
   config: {
     name: "azan",
     version: "21.0.0",
-    author: "milon",
+    author: "farhan",
     countDown: 5,
     role: 0, 
     description: "Auto Azan with Pre-Azan, Iftar & Sehri Mentions",
